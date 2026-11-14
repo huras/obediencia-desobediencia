@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#1a2f3a" />
+    <meta
+      name="description"
+      content="Contadores diários de obediência e respeito, e desobediência e desrespeito."
+    />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Source+Sans+3:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/css/app.css" />
+    <title>Obediência · Desobediência</title>
+  </head>
+  <body>
+    <div class="atmosfera" aria-hidden="true"></div>
+
+    <header class="topo">
+      <p class="marca">Obediência</p>
+      <h1 class="titulo-visually-hidden">
+        Contadores de obediência e desobediência
+      </h1>
+      <p class="subtitulo">Respeito &amp; responsabilidade, dia a dia</p>
+      <p class="data-hoje" id="rotulo-data" aria-live="polite">…</p>
+      <p class="status-sync" id="status-sync" role="status" aria-live="polite">
+        Conectando…
+      </p>
+    </header>
+
+    <main class="conteudo">
+      <section class="contadores" aria-label="Contadores de hoje">
+        <article class="contador contador--obediencia" data-tipo="obediencia">
+          <h2 class="contador__titulo">Obediência e respeito</h2>
+          <p
+            class="contador__valor"
+            id="valor-obediencia"
+            aria-live="polite"
+          >
+            0
+          </p>
+          <div class="contador__acoes">
+            <button
+              type="button"
+              class="btn btn--menos"
+              data-tipo="obediencia"
+              data-delta="-1"
+              aria-label="Diminuir obediência"
+            >
+              −
+            </button>
+            <button
+              type="button"
+              class="btn btn--mais"
+              data-tipo="obediencia"
+              data-delta="1"
+              aria-label="Aumentar obediência"
+            >
+              +
+            </button>
+          </div>
+        </article>
+
+        <article
+          class="contador contador--desobediencia"
+          data-tipo="desobediencia"
+        >
+          <h2 class="contador__titulo">Desobediência e desrespeito</h2>
+          <p
+            class="contador__valor"
+            id="valor-desobediencia"
+            aria-live="polite"
+          >
+            0
+          </p>
+          <div class="contador__acoes">
+            <button
+              type="button"
+              class="btn btn--menos"
+              data-tipo="desobediencia"
+              data-delta="-1"
+              aria-label="Diminuir desobediência"
+            >
+              −
+            </button>
+            <button
+              type="button"
+              class="btn btn--mais"
+              data-tipo="desobediencia"
+              data-delta="1"
+              aria-label="Aumentar desobediência"
+            >
+              +
+            </button>
+          </div>
+        </article>
+      </section>
+
+      <section class="progresso" aria-labelledby="titulo-progresso">
+        <div class="progresso__cabecalho">
+          <h2 id="titulo-progresso">Progresso</h2>
+          <div class="periodo" role="group" aria-label="Período do gráfico">
+            <button
+              type="button"
+              class="periodo__btn is-ativo"
+              data-dias="7"
+              aria-pressed="true"
+            >
+              7 dias
+            </button>
+            <button
+              type="button"
+              class="periodo__btn"
+              data-dias="30"
+              aria-pressed="false"
+            >
+              30 dias
+            </button>
+          </div>
+        </div>
+
+        <div class="resumo" id="resumo-periodo" aria-live="polite">
+          <div class="resumo__item">
+            <span class="resumo__rotulo">Obediência</span>
+            <strong class="resumo__valor" id="resumo-obediencia">0</strong>
+          </div>
+          <div class="resumo__item">
+            <span class="resumo__rotulo">Desobediência</span>
+            <strong class="resumo__valor" id="resumo-desobediencia">0</strong>
+          </div>
+          <div class="resumo__item">
+            <span class="resumo__rotulo">Razão positiva</span>
+            <strong class="resumo__valor" id="resumo-razao">—</strong>
+          </div>
+        </div>
+
+        <div class="grafico-wrap">
+          <canvas
+            id="grafico-progresso"
+            role="img"
+            aria-label="Gráfico de progresso diário"
+          ></canvas>
+        </div>
+      </section>
+    </main>
+
+    <footer class="rodape">
+      <p>Números compartilhados em tempo real · fuso Brasília</p>
+    </footer>
+
+    <script
+      src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"
+      defer
+    ></script>
+    <script type="module" src="/js/app.js"></script>
+  </body>
+</html>

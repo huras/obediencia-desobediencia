@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Obediência">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3dba8a"/>
+      <stop offset="100%" stop-color="#1a3a45"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="16" fill="url(#g)"/>
+  <path d="M18 34c4 8 10 12 14 12s10-4 14-12" fill="none" stroke="#eef6f4" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="26" cy="26" r="3.5" fill="#eef6f4"/>
+  <circle cx="38" cy="26" r="3.5" fill="#eef6f4"/>
+</svg>

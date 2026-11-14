@@ -1,0 +1,17 @@
+{
+  "name": "obediencia-desobediencia",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Contadores diários públicos de obediência e desobediência",
+  "scripts": {
+    "start": "node server/index.mjs",
+    "dev": "node --watch server/index.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.8.1"
+  }
+}
