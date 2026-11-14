@@ -9,9 +9,7 @@
     "dev": "node --watch server/index.mjs"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=16"
   },
-  "dependencies": {
-    "better-sqlite3": "^11.8.1"
-  }
+  "dependencies": {}
 }

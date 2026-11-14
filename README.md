@@ -9,7 +9,7 @@ Contadores diários públicos (mobile-first) de **obediência e respeito** e **d
 ## Stack
 
 - Front: HTML / CSS / JS (vanilla) + Chart.js
-- API: Node.js (HTTP nativo) + SQLite (`better-sqlite3`)
+- API: Node.js (HTTP nativo) + JSON atômico em `server/data/` (sem deps nativas — Node 16 no VPS)
 - Deploy: nginx + Let’s Encrypt + PM2 no mesmo VPS do Pokemon, **isolado** (pasta, porta, site e processo próprios)
 
 ## Desenvolvimento local

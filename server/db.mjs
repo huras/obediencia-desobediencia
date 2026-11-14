@@ -1,80 +1,60 @@
-import { mkdirSync } from "node:fs";
+import { mkdirSync, readFileSync, renameSync, writeFileSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import Database from "better-sqlite3";
 import { diaAtual, listarDiasRecentes } from "./dias.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const caminhoDb = join(__dirname, "data", "counters.db");
+const pastaDados = join(__dirname, "data");
+const caminhoDb = join(pastaDados, "counters.json");
 
-mkdirSync(dirname(caminhoDb), { recursive: true });
+mkdirSync(pastaDados, { recursive: true });
 
-const db = new Database(caminhoDb);
-db.pragma("journal_mode = WAL");
-db.pragma("foreign_keys = ON");
+function estadoVazio() {
+  return { dias: {}, eventos: [] };
+}
 
-db.exec(`
-  CREATE TABLE IF NOT EXISTS dias (
-    dia TEXT PRIMARY KEY,
-    obediencia INTEGER NOT NULL DEFAULT 0,
-    desobediencia INTEGER NOT NULL DEFAULT 0,
-    atualizado_em TEXT NOT NULL
-  );
+function carregar() {
+  if (!existsSync(caminhoDb)) return estadoVazio();
+  try {
+    const dados = JSON.parse(readFileSync(caminhoDb, "utf8"));
+    if (!dados || typeof dados !== "object") return estadoVazio();
+    if (!dados.dias || typeof dados.dias !== "object") dados.dias = {};
+    if (!Array.isArray(dados.eventos)) dados.eventos = [];
+    return dados;
+  } catch {
+    return estadoVazio();
+  }
+}
 
-  CREATE TABLE IF NOT EXISTS eventos (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    tipo TEXT NOT NULL CHECK (tipo IN ('obediencia', 'desobediencia')),
-    delta INTEGER NOT NULL CHECK (delta IN (-1, 1)),
-    criado_em TEXT NOT NULL
-  );
-
-  CREATE INDEX IF NOT EXISTS idx_eventos_criado ON eventos(criado_em);
-`);
-
-const stmtGarantirDia = db.prepare(`
-  INSERT INTO dias (dia, obediencia, desobediencia, atualizado_em)
-  VALUES (@dia, 0, 0, @agora)
-  ON CONFLICT(dia) DO NOTHING
-`);
-
-const stmtLerDia = db.prepare(`
-  SELECT dia, obediencia, desobediencia, atualizado_em AS atualizadoEm
-  FROM dias
-  WHERE dia = ?
-`);
-
-const stmtAtualizar = db.prepare(`
-  UPDATE dias
-  SET
-    obediencia = @obediencia,
-    desobediencia = @desobediencia,
-    atualizado_em = @agora
-  WHERE dia = @dia
-`);
-
-const stmtInserirEvento = db.prepare(`
-  INSERT INTO eventos (tipo, delta, criado_em)
-  VALUES (@tipo, @delta, @agora)
-`);
-
-const stmtHistorico = db.prepare(`
-  SELECT dia, obediencia, desobediencia, atualizado_em AS atualizadoEm
-  FROM dias
-  WHERE dia >= ? AND dia <= ?
-`);
+function salvar(estado) {
+  const tmp = `${caminhoDb}.${process.pid}.tmp`;
+  writeFileSync(tmp, `${JSON.stringify(estado)}\n`, "utf8");
+  renameSync(tmp, caminhoDb);
+}
 
 function agoraIso() {
   return new Date().toISOString();
 }
 
-function garantirDia(dia) {
-  stmtGarantirDia.run({ dia, agora: agoraIso() });
-  return stmtLerDia.get(dia);
+function garantirDia(estado, dia) {
+  if (!estado.dias[dia]) {
+    estado.dias[dia] = {
+      dia,
+      obediencia: 0,
+      desobediencia: 0,
+      atualizadoEm: agoraIso(),
+    };
+    return { registro: estado.dias[dia], criado: true };
+  }
+  return { registro: estado.dias[dia], criado: false };
 }
 
 export function obterHoje() {
+  const estado = carregar();
   const dia = diaAtual();
-  return garantirDia(dia);
+  const { registro, criado } = garantirDia(estado, dia);
+  if (criado) salvar(estado);
+  return { ...registro };
 }
 
 export function registrarEvento(tipo, delta) {
@@ -89,56 +69,50 @@ export function registrarEvento(tipo, delta) {
     throw erro;
   }
 
+  const estado = carregar();
   const dia = diaAtual();
+  const { registro: atual } = garantirDia(estado, dia);
   const agora = agoraIso();
 
-  const transacao = db.transaction(() => {
-    const atual = garantirDia(dia);
-    const proximo = {
-      dia,
-      obediencia: atual.obediencia,
-      desobediencia: atual.desobediencia,
-      atualizadoEm: agora,
-    };
+  const proximo = {
+    dia,
+    obediencia: atual.obediencia,
+    desobediencia: atual.desobediencia,
+    atualizadoEm: agora,
+  };
 
-    if (tipo === "obediencia") {
-      proximo.obediencia = Math.max(0, atual.obediencia + delta);
-    } else {
-      proximo.desobediencia = Math.max(0, atual.desobediencia + delta);
-    }
+  if (tipo === "obediencia") {
+    proximo.obediencia = Math.max(0, atual.obediencia + delta);
+  } else {
+    proximo.desobediencia = Math.max(0, atual.desobediencia + delta);
+  }
 
-    // Só grava evento se o valor mudou (ex.: −1 em zero não gera evento)
-    if (
-      proximo.obediencia === atual.obediencia &&
-      proximo.desobediencia === atual.desobediencia
-    ) {
-      return atual;
-    }
+  if (
+    proximo.obediencia === atual.obediencia &&
+    proximo.desobediencia === atual.desobediencia
+  ) {
+    return { ...atual };
+  }
 
-    stmtAtualizar.run({
-      dia,
-      obediencia: proximo.obediencia,
-      desobediencia: proximo.desobediencia,
-      agora,
-    });
-    stmtInserirEvento.run({ tipo, delta, agora });
-    return proximo;
+  estado.dias[dia] = proximo;
+  estado.eventos.push({
+    id: estado.eventos.length + 1,
+    tipo,
+    delta,
+    criadoEm: agora,
   });
-
-  return transacao();
+  if (estado.eventos.length > 5000) {
+    estado.eventos = estado.eventos.slice(-4000);
+  }
+  salvar(estado);
+  return { ...proximo };
 }
 
 export function obterHistorico(quantidadeDias = 30) {
-  const dias = listarDiasRecentes(quantidadeDias);
-  const inicio = dias[0];
-  const fim = dias[dias.length - 1];
-  const mapa = new Map(
-    stmtHistorico.all(inicio, fim).map((linha) => [linha.dia, linha])
-  );
-
-  return dias.map((dia) => {
-    const existente = mapa.get(dia);
-    if (existente) return existente;
+  const estado = carregar();
+  return listarDiasRecentes(quantidadeDias).map((dia) => {
+    const existente = estado.dias[dia];
+    if (existente) return { ...existente };
     return {
       dia,
       obediencia: 0,
@@ -148,6 +122,4 @@ export function obterHistorico(quantidadeDias = 30) {
   });
 }
 
-export function fecharDb() {
-  db.close();
-}
+export function fecharDb() {}

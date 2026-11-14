@@ -1,6 +1,8 @@
 node_modules/
 server/data/*.db
 server/data/*.db-*
+server/data/*.json
+server/data/*.tmp
 deploy/.env
 deploy/secrets.local.env
 .DS_Store
