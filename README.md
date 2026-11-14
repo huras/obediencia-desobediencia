@@ -19,13 +19,13 @@ npm install
 npm run dev
 ```
 
-Abra [http://127.0.0.1:8790](http://127.0.0.1:8790).
+Abra [http://127.0.0.1:8791](http://127.0.0.1:8791).
 
 Variáveis opcionais:
 
 | Variável | Default | Descrição |
 |---|---|---|
-| `OBEDIENCIA_PORT` | `8790` | Porta da API |
+| `OBEDIENCIA_PORT` | `8791` | Porta da API |
 | `OBEDIENCIA_HOST` | `127.0.0.1` | Bind (use `0.0.0.0` se precisar expor na LAN) |
 | `RATE_LIMIT_POR_MINUTO` | `60` | Limite soft por IP |
 
@@ -70,7 +70,7 @@ O script:
 2. `npm install --omit=dev`
 3. Instala **somente** o site nginx `obediencia.hurast.com`
 4. Emite certificado Let’s Encrypt se ainda não existir
-5. Sobe/reinicia **apenas** o PM2 `obediencia-api` na porta `8790`
+5. Sobe/reinicia **apenas** o PM2 `obediencia-api` na porta `8791`
 
 ### 4. Conferir
 

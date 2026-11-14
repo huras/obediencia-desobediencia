@@ -32,7 +32,7 @@ module.exports = {
       cwd: "/var/www/obediencia",
       env: {
         NODE_ENV: "production",
-        OBEDIENCIA_PORT: Number(secrets.OBEDIENCIA_PORT || 8790),
+        OBEDIENCIA_PORT: Number(secrets.OBEDIENCIA_PORT || 8791),
         OBEDIENCIA_HOST: secrets.OBEDIENCIA_HOST || "127.0.0.1",
         RATE_LIMIT_POR_MINUTO: Number(secrets.RATE_LIMIT_POR_MINUTO || 60),
       },

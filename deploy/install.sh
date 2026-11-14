@@ -44,6 +44,8 @@ ln -sf "$NGINX_SITE" /etc/nginx/sites-enabled/obediencia.hurast.com
 # Se o cert ainda não existe, sobe HTTP temporário só deste host para o ACME.
 if [ ! -f "/etc/letsencrypt/live/${PRIMARY_HOST}/fullchain.pem" ]; then
   echo "==> TLS ainda não emitido — config HTTP temporária para ACME..."
+  export LANG="${LANG:-C.UTF-8}"
+  export LC_ALL="${LC_ALL:-C.UTF-8}"
   cat > "$NGINX_SITE" <<EOF
 server {
     listen 80;
@@ -57,11 +59,18 @@ EOF
   systemctl reload nginx
 
   echo "==> Requesting TLS certificate (certbot)..."
-  certbot certonly --nginx \
+  if certbot certonly --nginx \
     -d "$PRIMARY_HOST" \
     --non-interactive --agree-tos -m admin@hurast.com \
-    --cert-name "$PRIMARY_HOST" || true
+    --cert-name "$PRIMARY_HOST"; then
+    cp deploy/nginx-obediencia.hurast.com.conf "$NGINX_SITE"
+  else
+    echo "WARN: certbot falhou — mantendo nginx HTTP temporário"
+  fi
+fi
 
+# Só aplica o conf HTTPS se o cert existir
+if [ -f "/etc/letsencrypt/live/${PRIMARY_HOST}/fullchain.pem" ]; then
   cp deploy/nginx-obediencia.hurast.com.conf "$NGINX_SITE"
 fi
 

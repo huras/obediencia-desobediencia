@@ -6,7 +6,7 @@ import { obterHoje, registrarEvento, obterHistorico } from "./db.mjs";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const PASTA_PUBLICA = join(__dirname, "..", "public");
-const PORTA = Number(process.env.PORTA || process.env.OBEDIENCIA_PORT || 8790);
+const PORTA = Number(process.env.PORTA || process.env.OBEDIENCIA_PORT || 8791);
 const HOST = process.env.OBEDIENCIA_HOST || "127.0.0.1";
 const LIMITE_POR_MINUTO = Number(process.env.RATE_LIMIT_POR_MINUTO || 60);
 
