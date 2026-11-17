@@ -31,12 +31,15 @@ Variáveis opcionais:
 
 ## API
 
-- `GET /api/hoje` → contadores do dia corrente
-- `POST /api/evento` `{ "tipo": "obediencia"|"desobediencia", "delta": 1|-1 }`
+- `GET /api/hoje` → contadores + eventos do dia corrente
+- `GET /api/dia/YYYY-MM-DD` → contadores + log de um dia (não futuro)
+- `PUT /api/dia/YYYY-MM-DD` `{ "obediencia": N, "desobediencia": N }` → ajuste manual
+- `POST /api/evento` `{ "tipo", "delta": 1|-1, "comentario?", "dia?" }`
+- `PATCH /api/evento/:id` `{ "comentario" }` → nota opcional / edição
 - `GET /api/historico?dias=30` → série diária para o gráfico
 - `GET /api/saude` → healthcheck
 
-Valores nunca ficam negativos.
+Valores nunca ficam negativos. Dias passados são editáveis pela navegação de data.
 
 ## Deploy no VPS (obediencia.hurast.com)
 

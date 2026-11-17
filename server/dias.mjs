@@ -15,9 +15,24 @@ const formatadorExibicao = new Intl.DateTimeFormat("pt-BR", {
   year: "numeric",
 });
 
+const RE_DIA = /^\d{4}-\d{2}-\d{2}$/;
+
 /** Retorna YYYY-MM-DD no fuso America/Sao_Paulo. */
 export function diaAtual(referencia = new Date()) {
   return formatadorDia.format(referencia);
+}
+
+export function diaValido(dia) {
+  if (typeof dia !== "string" || !RE_DIA.test(dia)) return false;
+  const [ano, mes, d] = dia.split("-").map(Number);
+  const data = new Date(Date.UTC(ano, mes - 1, d, 15, 0, 0));
+  return formatadorDia.format(data) === dia;
+}
+
+/** Impede datas futuras no fuso de Brasília. */
+export function diaPermitido(dia) {
+  if (!diaValido(dia)) return false;
+  return dia <= diaAtual();
 }
 
 /** Lista de dias YYYY-MM-DD do mais antigo ao mais recente (inclui hoje). */
@@ -25,7 +40,6 @@ export function listarDiasRecentes(quantidade, referencia = new Date()) {
   const qtd = Math.max(1, Math.min(366, Number(quantidade) || 30));
   const hoje = diaAtual(referencia);
   const [ano, mes, dia] = hoje.split("-").map(Number);
-  // Meio-dia UTC-ish estável: construímos a partir do calendário BR
   const base = Date.UTC(ano, mes - 1, dia, 15, 0, 0);
   const lista = [];
   for (let i = qtd - 1; i >= 0; i -= 1) {

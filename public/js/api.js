@@ -29,15 +29,33 @@ export function buscarHoje(signal) {
   return requisitar("/api/hoje", { signal });
 }
 
+export function buscarDia(dia, signal) {
+  return requisitar(`/api/dia/${encodeURIComponent(dia)}`, { signal });
+}
+
 export function buscarHistorico(dias, signal) {
   return requisitar(`/api/historico?dias=${encodeURIComponent(dias)}`, {
     signal,
   });
 }
 
-export function enviarEvento(tipo, delta) {
+export function enviarEvento({ tipo, delta, comentario, dia }) {
   return requisitar("/api/evento", {
     method: "POST",
-    body: JSON.stringify({ tipo, delta }),
+    body: JSON.stringify({ tipo, delta, comentario, dia }),
+  });
+}
+
+export function definirDia(dia, obediencia, desobediencia) {
+  return requisitar(`/api/dia/${encodeURIComponent(dia)}`, {
+    method: "PUT",
+    body: JSON.stringify({ obediencia, desobediencia }),
+  });
+}
+
+export function salvarComentario(eventoId, comentario) {
+  return requisitar(`/api/evento/${encodeURIComponent(eventoId)}`, {
+    method: "PATCH",
+    body: JSON.stringify({ comentario }),
   });
 }

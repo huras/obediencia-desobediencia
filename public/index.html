@@ -31,14 +31,42 @@
         Contadores de obediência e desobediência
       </h1>
       <p class="subtitulo">Respeito &amp; responsabilidade, dia a dia</p>
-      <p class="data-hoje" id="rotulo-data" aria-live="polite">…</p>
+
+      <div class="navegacao-dia" role="group" aria-label="Dia ativo">
+        <button
+          type="button"
+          class="nav-dia__btn"
+          id="btn-dia-anterior"
+          aria-label="Dia anterior"
+        >
+          ‹
+        </button>
+        <button
+          type="button"
+          class="nav-dia__atual"
+          id="btn-escolher-dia"
+          aria-haspopup="dialog"
+        >
+          <span class="data-hoje" id="rotulo-data">…</span>
+          <span class="nav-dia__dica" id="dica-dia">hoje</span>
+        </button>
+        <button
+          type="button"
+          class="nav-dia__btn"
+          id="btn-dia-proximo"
+          aria-label="Próximo dia"
+        >
+          ›
+        </button>
+      </div>
+
       <p class="status-sync" id="status-sync" role="status" aria-live="polite">
         Conectando…
       </p>
     </header>
 
     <main class="conteudo">
-      <section class="contadores" aria-label="Contadores de hoje">
+      <section class="contadores" aria-label="Contadores do dia">
         <article class="contador contador--obediencia" data-tipo="obediencia">
           <h2 class="contador__titulo">Obediência e respeito</h2>
           <p
@@ -103,6 +131,22 @@
             </button>
           </div>
         </article>
+      </section>
+
+      <p class="dica-nota">
+        Toque em <strong>+</strong> marca na hora. Quer detalhar? A folha de nota
+        abre em seguida — dá pra pular.
+      </p>
+
+      <section class="log" aria-labelledby="titulo-log">
+        <div class="log__cabecalho">
+          <h2 id="titulo-log">Log do dia</h2>
+          <button type="button" class="btn-texto" id="btn-ajuste-manual">
+            Ajuste manual
+          </button>
+        </div>
+        <ul class="log__lista" id="lista-log"></ul>
+        <p class="log__vazio" id="log-vazio">Nenhum ponto neste dia ainda.</p>
       </section>
 
       <section class="progresso" aria-labelledby="titulo-progresso">

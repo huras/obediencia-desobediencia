@@ -2,13 +2,20 @@ import { createServer } from "node:http";
 import { join, extname, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createReadStream, existsSync, statSync } from "node:fs";
-import { obterHoje, registrarEvento, obterHistorico } from "./db.mjs";
+import {
+  obterHoje,
+  obterDia,
+  registrarEvento,
+  obterHistorico,
+  definirContagens,
+  atualizarComentario,
+} from "./db.mjs";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const PASTA_PUBLICA = join(__dirname, "..", "public");
 const PORTA = Number(process.env.PORTA || process.env.OBEDIENCIA_PORT || 8791);
 const HOST = process.env.OBEDIENCIA_HOST || "127.0.0.1";
-const LIMITE_POR_MINUTO = Number(process.env.RATE_LIMIT_POR_MINUTO || 60);
+const LIMITE_POR_MINUTO = Number(process.env.RATE_LIMIT_POR_MINUTO || 90);
 
 const TIPOS_MIME = {
   ".html": "text/html; charset=utf-8",
@@ -23,7 +30,6 @@ const TIPOS_MIME = {
   ".woff2": "font/woff2",
 };
 
-/** Rate limit simples em memória por IP. */
 const janelas = new Map();
 
 function ipDoCliente(req) {
@@ -45,7 +51,6 @@ function dentroDoLimite(ip) {
   return janela.contagem <= LIMITE_POR_MINUTO;
 }
 
-// Limpa IPs ociosos de tempos em tempos
 setInterval(() => {
   const agora = Date.now();
   for (const [ip, janela] of janelas) {
@@ -63,7 +68,7 @@ function enviarJson(res, status, corpo) {
   res.end(payload);
 }
 
-function lerCorpo(req, limite = 4096) {
+function lerCorpo(req, limite = 8192) {
   return new Promise((resolve, reject) => {
     const pedacos = [];
     let tamanho = 0;
@@ -113,9 +118,7 @@ function servirEstatico(req, res, urlPath) {
 
   res.writeHead(200, {
     "Content-Type": tipo,
-    "Cache-Control": estaticoLongo
-      ? "public, max-age=604800"
-      : "no-cache",
+    "Cache-Control": estaticoLongo ? "public, max-age=604800" : "no-cache",
   });
   createReadStream(caminho).pipe(res);
 }
@@ -133,10 +136,37 @@ async function tratarApi(req, res, pathname) {
     });
   }
 
+  const matchDia = pathname.match(/^\/api\/dia\/(\d{4}-\d{2}-\d{2})$/);
+  if (matchDia && req.method === "GET") {
+    return enviarJson(res, 200, obterDia(matchDia[1]));
+  }
+
+  if (matchDia && req.method === "PUT") {
+    const corpo = await lerCorpo(req);
+    return enviarJson(
+      res,
+      200,
+      definirContagens(matchDia[1], corpo.obediencia, corpo.desobediencia)
+    );
+  }
+
   if (pathname === "/api/evento" && req.method === "POST") {
     const corpo = await lerCorpo(req);
-    const resultado = registrarEvento(corpo.tipo, Number(corpo.delta));
+    const resultado = registrarEvento(corpo.tipo, Number(corpo.delta), {
+      comentario: corpo.comentario,
+      dia: corpo.dia,
+    });
     return enviarJson(res, 200, resultado);
+  }
+
+  const matchEvento = pathname.match(/^\/api\/evento\/(\d+)$/);
+  if (matchEvento && req.method === "PATCH") {
+    const corpo = await lerCorpo(req);
+    return enviarJson(
+      res,
+      200,
+      atualizarComentario(matchEvento[1], corpo.comentario)
+    );
   }
 
   if (pathname === "/api/saude" && req.method === "GET") {
@@ -150,7 +180,9 @@ const servidor = createServer(async (req, res) => {
   try {
     const ip = ipDoCliente(req);
     if (!dentroDoLimite(ip)) {
-      enviarJson(res, 429, { erro: "Muitas requisições. Tente de novo em instantes." });
+      enviarJson(res, 429, {
+        erro: "Muitas requisições. Tente de novo em instantes.",
+      });
       return;
     }
 
