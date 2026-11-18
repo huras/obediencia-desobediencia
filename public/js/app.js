@@ -4,13 +4,13 @@ import {
   enviarEvento,
   definirDia,
   salvarComentario,
-} from "./api.js";
+} from "./api.js?v=20261118";
 import {
   inicializarGrafico,
   atualizarGrafico,
   calcularResumo,
-} from "./charts.js";
-import { criarFolha } from "./folha.js";
+} from "./charts.js?v=20261118";
+import { criarFolha } from "./folha.js?v=20261118";
 
 const INTERVALO_POLL_MS = 2500;
 const COMENTARIO_MAX = 280;
