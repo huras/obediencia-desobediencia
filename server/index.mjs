@@ -148,7 +148,12 @@ async function tratarApi(req, res, pathname) {
     return enviarJson(
       res,
       200,
-      definirContagens(matchDia[1], corpo.obediencia, corpo.desobediencia)
+      definirContagens(
+        matchDia[1],
+        corpo.obediencia,
+        corpo.desobediencia,
+        corpo.desculpa
+      )
     );
   }
 

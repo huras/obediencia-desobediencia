@@ -1,6 +1,6 @@
 # Obediência · Desobediência
 
-Contadores diários públicos (mobile-first) de **obediência e respeito** e **desobediência e desrespeito**, com histórico em gráfico. Os números são compartilhados entre qualquer device que abrir a página.
+Contadores diários públicos (mobile-first): **verde** (obediência), **vermelho** (desobediência) e **amarelo** (desculpas/retratação — anula 1 vermelho). Os números são compartilhados entre qualquer device.
 
 - Produção: [https://obediencia.hurast.com](https://obediencia.hurast.com)
 - Fuso do “dia”: `America/Sao_Paulo`
@@ -33,8 +33,9 @@ Variáveis opcionais:
 
 - `GET /api/hoje` → contadores + eventos do dia corrente
 - `GET /api/dia/YYYY-MM-DD` → contadores + log de um dia (não futuro)
-- `PUT /api/dia/YYYY-MM-DD` `{ "obediencia": N, "desobediencia": N }` → ajuste manual
-- `POST /api/evento` `{ "tipo", "delta": 1|-1, "comentario?", "dia?" }` — observação nasce ligada ao ponto
+- `PUT /api/dia/YYYY-MM-DD` `{ "obediencia", "desobediencia", "desculpa" }` → ajuste manual
+- `POST /api/evento` `{ "tipo": "obediencia"|"desobediencia"|"desculpa", "delta", "comentario?", "dia?" }`
+  - `desculpa` +1: exige vermelho ≥ 1, anula 1 vermelho e soma amarelo
 - `PATCH /api/evento/:id` `{ "comentario" }` → editar observação
 - `DELETE /api/evento/:id` → soft delete (`excluidoEm`) e desfaz o contador
 - `PATCH /api/evento/:id` `{ "restaurar": true }` → restaura soft delete

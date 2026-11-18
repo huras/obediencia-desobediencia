@@ -32,18 +32,25 @@ export async function inicializarGrafico(canvas) {
       labels: [],
       datasets: [
         {
-          label: "Obediência",
+          label: "Verde",
           data: [],
           backgroundColor: "rgba(61, 186, 138, 0.85)",
           borderRadius: 6,
-          maxBarThickness: 18,
+          maxBarThickness: 16,
         },
         {
-          label: "Desobediência",
+          label: "Vermelho",
           data: [],
           backgroundColor: "rgba(224, 122, 74, 0.85)",
           borderRadius: 6,
-          maxBarThickness: 18,
+          maxBarThickness: 16,
+        },
+        {
+          label: "Amarelo",
+          data: [],
+          backgroundColor: "rgba(232, 196, 74, 0.9)",
+          borderRadius: 6,
+          maxBarThickness: 16,
         },
       ],
     },
@@ -92,19 +99,23 @@ export function atualizarGrafico(serie) {
   if (!grafico) return;
 
   grafico.data.labels = serie.map((item) => rotuloCurto(item.dia));
-  grafico.data.datasets[0].data = serie.map((item) => item.obediencia);
-  grafico.data.datasets[1].data = serie.map((item) => item.desobediencia);
+  grafico.data.datasets[0].data = serie.map((item) => item.obediencia || 0);
+  grafico.data.datasets[1].data = serie.map((item) => item.desobediencia || 0);
+  grafico.data.datasets[2].data = serie.map((item) => item.desculpa || 0);
   grafico.update();
 }
 
 export function calcularResumo(serie) {
   let obediencia = 0;
   let desobediencia = 0;
+  let desculpa = 0;
   for (const item of serie) {
-    obediencia += item.obediencia;
-    desobediencia += item.desobediencia;
+    obediencia += item.obediencia || 0;
+    desobediencia += item.desobediencia || 0;
+    desculpa += item.desculpa || 0;
   }
+  // Razão positiva: verde em relação a verde+vermelho líquido
   const total = obediencia + desobediencia;
   const razao = total === 0 ? null : Math.round((obediencia / total) * 100);
-  return { obediencia, desobediencia, razao };
+  return { obediencia, desobediencia, desculpa, razao };
 }

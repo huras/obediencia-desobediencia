@@ -5,13 +5,13 @@ import {
   definirDia,
   salvarComentario,
   excluirEvento,
-} from "./api.js?v=20261118b";
+} from "./api.js?v=20261118c";
 import {
   inicializarGrafico,
   atualizarGrafico,
   calcularResumo,
-} from "./charts.js?v=20261118b";
-import { criarFolha } from "./folha.js?v=20261118b";
+} from "./charts.js?v=20261118c";
+import { criarFolha } from "./folha.js?v=20261118c";
 
 const INTERVALO_POLL_MS = 2500;
 const COMENTARIO_MAX = 280;
@@ -21,8 +21,10 @@ const elDicaDia = document.getElementById("dica-dia");
 const elStatus = document.getElementById("status-sync");
 const elObediencia = document.getElementById("valor-obediencia");
 const elDesobediencia = document.getElementById("valor-desobediencia");
+const elDesculpa = document.getElementById("valor-desculpa");
 const elResumoObediencia = document.getElementById("resumo-obediencia");
 const elResumoDesobediencia = document.getElementById("resumo-desobediencia");
+const elResumoDesculpa = document.getElementById("resumo-desculpa");
 const elResumoRazao = document.getElementById("resumo-razao");
 const elListaLog = document.getElementById("lista-log");
 const elLogVazio = document.getElementById("log-vazio");
@@ -30,6 +32,7 @@ const btnDiaAnterior = document.getElementById("btn-dia-anterior");
 const btnDiaProximo = document.getElementById("btn-dia-proximo");
 const btnEscolherDia = document.getElementById("btn-escolher-dia");
 const btnAjusteManual = document.getElementById("btn-ajuste-manual");
+const btnDesculpa = document.getElementById("btn-desculpa");
 const canvas = document.getElementById("grafico-progresso");
 
 const formatadorData = new Intl.DateTimeFormat("pt-BR", {
@@ -50,6 +53,7 @@ let estado = {
   dia: null,
   obediencia: 0,
   desobediencia: 0,
+  desculpa: 0,
   atualizadoEm: null,
   eventos: [],
 };
@@ -117,27 +121,42 @@ function atualizarNavegacaoDia() {
   btnDiaAnterior.disabled = false;
 }
 
+function atualizarBotaoDesculpa() {
+  if (!btnDesculpa) return;
+  const pode = (estado.desobediencia || 0) > 0;
+  btnDesculpa.disabled = !pode;
+  btnDesculpa.title = pode
+    ? "Anula 1 vermelho e marca amarelo"
+    : "Precisa de pelo menos 1 ponto vermelho";
+}
+
 function pintarContadores(proximo, { animar = false } = {}) {
   const mudouObediencia = proximo.obediencia !== estado.obediencia;
   const mudouDesobediencia = proximo.desobediencia !== estado.desobediencia;
+  const mudouDesculpa = (proximo.desculpa || 0) !== (estado.desculpa || 0);
 
-  elObediencia.textContent = String(proximo.obediencia);
-  elDesobediencia.textContent = String(proximo.desobediencia);
+  elObediencia.textContent = String(proximo.obediencia || 0);
+  elDesobediencia.textContent = String(proximo.desobediencia || 0);
+  elDesculpa.textContent = String(proximo.desculpa || 0);
 
   if (animar && mudouObediencia) animarBump(elObediencia);
   if (animar && mudouDesobediencia) animarBump(elDesobediencia);
+  if (animar && mudouDesculpa) animarBump(elDesculpa);
 
   estado = {
     ...estado,
     ...proximo,
+    desculpa: proximo.desculpa || 0,
     eventos: Array.isArray(proximo.eventos) ? proximo.eventos : estado.eventos,
   };
+  atualizarBotaoDesculpa();
 }
 
 function pintarResumo(serie) {
   const resumo = calcularResumo(serie);
   elResumoObediencia.textContent = String(resumo.obediencia);
   elResumoDesobediencia.textContent = String(resumo.desobediencia);
+  elResumoDesculpa.textContent = String(resumo.desculpa);
   elResumoRazao.textContent =
     resumo.razao === null ? "—" : `${resumo.razao}%`;
 }
@@ -145,11 +164,13 @@ function pintarResumo(serie) {
 function rotuloTipo(tipo) {
   if (tipo === "obediencia") return "Obediência";
   if (tipo === "desobediencia") return "Desobediência";
+  if (tipo === "desculpa") return "Desculpa";
   return "Ajuste";
 }
 
 function badgeDelta(evento) {
   if (evento.tipo === "ajuste") return "±";
+  if (evento.tipo === "desculpa") return "↩";
   return evento.delta > 0 ? "+1" : "−1";
 }
 
@@ -262,11 +283,17 @@ function enfileirarEvento({ tipo, delta, comentario = "" }) {
       tipo === "obediencia"
         ? Math.max(0, estado.obediencia + delta)
         : estado.obediencia,
-    desobediencia:
-      tipo === "desobediencia"
-        ? Math.max(0, estado.desobediencia + delta)
-        : estado.desobediencia,
+    desobediencia: estado.desobediencia,
+    desculpa: estado.desculpa || 0,
   };
+
+  if (tipo === "desobediencia") {
+    otimista.desobediencia = Math.max(0, estado.desobediencia + delta);
+  } else if (tipo === "desculpa" && delta === 1) {
+    otimista.desculpa = (estado.desculpa || 0) + 1;
+    otimista.desobediencia = Math.max(0, estado.desobediencia - 1);
+  }
+
   pintarContadores(otimista, { animar: true });
 
   if (navigator.vibrate) {
@@ -303,24 +330,35 @@ function enfileirarEvento({ tipo, delta, comentario = "" }) {
 
 /** Folha na hora do +: observação já nasce ligada ao ponto. */
 function abrirFolhaMarcarPonto(tipo, delta) {
+  if (tipo === "desculpa" && (estado.desobediencia || 0) < 1) {
+    definirStatus("Precisa de um ponto vermelho para se retratar", "is-erro");
+    return;
+  }
+
   fecharFolhaAtual();
   const ehMais = delta === 1;
-  const titulo =
-    tipo === "obediencia"
-      ? ehMais
-        ? "Marcar obediência"
-        : "Diminuir obediência"
-      : ehMais
-        ? "Marcar desobediência"
-        : "Diminuir desobediência";
+  let titulo = "Marcar ponto";
+  let meta = `${ehMais ? "+1" : "−1"} · a observação fica ligada a ele`;
+  let placeholder = "Ex.: guardou o brinquedo sem reclamar";
+
+  if (tipo === "obediencia") {
+    titulo = ehMais ? "Marcar obediência" : "Diminuir obediência";
+  } else if (tipo === "desobediencia") {
+    titulo = ehMais ? "Marcar desobediência" : "Diminuir desobediência";
+    placeholder = "Ex.: gritou / não quis guardar";
+  } else if (tipo === "desculpa") {
+    titulo = "Desculpas / retratação";
+    meta = "Anula 1 vermelho e soma 1 amarelo";
+    placeholder = "Ex.: pediu desculpas pelo que falou";
+  }
 
   const folha = criarFolha({
     titulo,
     corpoHtml: `
-      <p class="log__meta">${ehMais ? "+1" : "−1"} neste ponto · a observação fica ligada a ele</p>
+      <p class="log__meta">${meta}</p>
       <div class="folha__campo">
         <label for="campo-comentario">Observação (opcional, até ${COMENTARIO_MAX})</label>
-        <textarea id="campo-comentario" maxlength="${COMENTARIO_MAX}" placeholder="Ex.: guardou o brinquedo sem reclamar"></textarea>
+        <textarea id="campo-comentario" maxlength="${COMENTARIO_MAX}" placeholder="${placeholder}"></textarea>
       </div>
     `,
     acoes: [
@@ -330,7 +368,7 @@ function abrirFolhaMarcarPonto(tipo, delta) {
         onClick: () => folha.fechar(),
       },
       {
-        rotulo: ehMais ? "Marcar" : "Confirmar",
+        rotulo: tipo === "desculpa" ? "Se retratar" : ehMais ? "Marcar" : "Confirmar",
         classe: "folha__btn--primario",
         onClick: () => {
           const texto = folha.query("#campo-comentario").value.trim();
@@ -463,13 +501,17 @@ function abrirFolhaAjusteManual() {
       <p class="log__meta">Corrige os totais sem precisar +/− um a um. Fica registrado no log.</p>
       <div class="folha__linha">
         <div class="folha__campo">
-          <label for="ajuste-obediencia">Obediência</label>
+          <label for="ajuste-obediencia">Verde</label>
           <input id="ajuste-obediencia" type="number" min="0" max="9999" step="1" value="${estado.obediencia}" />
         </div>
         <div class="folha__campo">
-          <label for="ajuste-desobediencia">Desobediência</label>
+          <label for="ajuste-desobediencia">Vermelho</label>
           <input id="ajuste-desobediencia" type="number" min="0" max="9999" step="1" value="${estado.desobediencia}" />
         </div>
+      </div>
+      <div class="folha__campo">
+        <label for="ajuste-desculpa">Amarelo (desculpas)</label>
+        <input id="ajuste-desculpa" type="number" min="0" max="9999" step="1" value="${estado.desculpa || 0}" />
       </div>
     `,
     acoes: [
@@ -484,8 +526,9 @@ function abrirFolhaAjusteManual() {
         onClick: async () => {
           const o = Number(folha.query("#ajuste-obediencia").value);
           const d = Number(folha.query("#ajuste-desobediencia").value);
+          const a = Number(folha.query("#ajuste-desculpa").value);
           try {
-            const dados = await definirDia(diaAtivo, o, d);
+            const dados = await definirDia(diaAtivo, o, d, a);
             aplicarEstadoDia(dados, { animar: true });
             await sincronizarHistorico();
             definirStatus("Dia ajustado", "is-ok");

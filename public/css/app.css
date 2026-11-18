@@ -11,6 +11,9 @@
   --cor-desobediencia: #e07a4a;
   --cor-desobediencia-escura: #b14f28;
   --cor-desobediencia-clara: #f0a47a;
+  --cor-desculpa: #e8c44a;
+  --cor-desculpa-escura: #b8911f;
+  --cor-desculpa-clara: #f5df7a;
   --cor-superficie: rgba(255, 255, 255, 0.07);
   --cor-borda: rgba(255, 255, 255, 0.14);
   --sombra: 0 14px 32px rgba(0, 0, 0, 0.32);
@@ -218,6 +221,13 @@ body {
     inset 0 0 0 1px rgba(224, 122, 74, 0.08);
 }
 
+.contador--desculpa {
+  border-color: rgba(232, 196, 74, 0.5);
+  box-shadow:
+    var(--sombra),
+    inset 0 0 0 1px rgba(232, 196, 74, 0.1);
+}
+
 .contador__titulo {
   margin: 0;
   font-size: 0.8rem;
@@ -233,6 +243,18 @@ body {
 
 .contador--desobediencia .contador__titulo {
   color: var(--cor-desobediencia-clara);
+}
+
+.contador--desculpa .contador__titulo {
+  color: var(--cor-desculpa-clara);
+}
+
+.contador__ajuda {
+  margin: -0.35rem 0 0.85rem;
+  text-align: center;
+  color: var(--cor-texto-suave);
+  font-size: 0.8rem;
+  line-height: 1.3;
 }
 
 .contador__valor {
@@ -255,6 +277,10 @@ body {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0.7rem;
+}
+
+.contador__acoes--unica {
+  grid-template-columns: 1fr;
 }
 
 .btn {
@@ -307,6 +333,13 @@ body {
 
 .contador--desobediencia .btn--menos {
   background: #8a3d22;
+}
+
+.contador--desculpa .btn--mais {
+  background: linear-gradient(180deg, var(--cor-desculpa-clara), var(--cor-desculpa-escura));
+  box-shadow: 0 10px 22px rgba(184, 145, 31, 0.38);
+  font-size: 1.05rem;
+  letter-spacing: 0.01em;
 }
 
 .btn:disabled {
@@ -392,6 +425,10 @@ body {
   border-color: rgba(224, 122, 74, 0.35);
 }
 
+.log__item--desculpa {
+  border-color: rgba(232, 196, 74, 0.4);
+}
+
 .log__item--ajuste {
   border-color: var(--cor-borda);
   opacity: 0.92;
@@ -416,6 +453,11 @@ body {
 
 .log__item--desobediencia .log__badge {
   background: var(--cor-desobediencia-escura);
+}
+
+.log__item--desculpa .log__badge {
+  background: var(--cor-desculpa-escura);
+  color: #1a1a12;
 }
 
 .log__item--ajuste .log__badge {
@@ -546,9 +588,15 @@ body {
 
 .resumo {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.45rem;
   margin-bottom: 0.9rem;
+}
+
+@media (min-width: 420px) {
+  .resumo {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }
 
 .resumo__item {
@@ -767,6 +815,10 @@ body {
   .contadores {
     grid-template-columns: 1fr 1fr;
     gap: 1rem;
+  }
+
+  .contador--desculpa {
+    grid-column: 1 / -1;
   }
 
   .contador {

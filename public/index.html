@@ -14,15 +14,15 @@
       name="description"
       content="Contadores diários de obediência e respeito, e desobediência e desrespeito."
     />
-    <link rel="icon" href="/favicon.svg?v=20261118b" type="image/svg+xml" />
-    <link rel="manifest" href="/manifest.webmanifest?v=20261118b" />
+    <link rel="icon" href="/favicon.svg?v=20261118c" type="image/svg+xml" />
+    <link rel="manifest" href="/manifest.webmanifest?v=20261118c" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Source+Sans+3:wght@400;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="/css/app.css?v=20261118b" />
+    <link rel="stylesheet" href="/css/app.css?v=20261118c" />
     <title>Obediência · Desobediência</title>
   </head>
   <body>
@@ -134,10 +134,32 @@
             </button>
           </div>
         </article>
+
+        <article class="contador contador--desculpa" data-tipo="desculpa">
+          <h2 class="contador__titulo">Desculpas e retratação</h2>
+          <p class="contador__valor" id="valor-desculpa" aria-live="polite">
+            0
+          </p>
+          <p class="contador__ajuda">
+            Anula 1 vermelho e soma na barra amarela
+          </p>
+          <div class="contador__acoes contador__acoes--unica">
+            <button
+              type="button"
+              class="btn btn--mais"
+              data-tipo="desculpa"
+              data-delta="1"
+              id="btn-desculpa"
+              aria-label="Marcar desculpa ou retratação"
+            >
+              Pedir desculpas
+            </button>
+          </div>
+        </article>
       </section>
 
       <p class="dica-nota">
-        Ao marcar, a observação fica ligada àquele ponto · exclusão é soft delete
+        Amarelo = se retratou · anula um vermelho · observação ligada ao ponto
       </p>
 
       <section class="log" aria-labelledby="titulo-log">
@@ -176,15 +198,19 @@
 
         <div class="resumo" id="resumo-periodo" aria-live="polite">
           <div class="resumo__item">
-            <span class="resumo__rotulo">Obediência</span>
+            <span class="resumo__rotulo">Verde</span>
             <strong class="resumo__valor" id="resumo-obediencia">0</strong>
           </div>
           <div class="resumo__item">
-            <span class="resumo__rotulo">Desobediência</span>
+            <span class="resumo__rotulo">Vermelho</span>
             <strong class="resumo__valor" id="resumo-desobediencia">0</strong>
           </div>
           <div class="resumo__item">
-            <span class="resumo__rotulo">Razão positiva</span>
+            <span class="resumo__rotulo">Amarelo</span>
+            <strong class="resumo__valor" id="resumo-desculpa">0</strong>
+          </div>
+          <div class="resumo__item">
+            <span class="resumo__rotulo">Razão +</span>
             <strong class="resumo__valor" id="resumo-razao">—</strong>
           </div>
         </div>
@@ -207,6 +233,6 @@
       src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"
       defer
     ></script>
-    <script type="module" src="/js/app.js?v=20261118b"></script>
+    <script type="module" src="/js/app.js?v=20261118c"></script>
   </body>
 </html>

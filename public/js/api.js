@@ -46,10 +46,10 @@ export function enviarEvento({ tipo, delta, comentario, dia }) {
   });
 }
 
-export function definirDia(dia, obediencia, desobediencia) {
+export function definirDia(dia, obediencia, desobediencia, desculpa) {
   return requisitar(`/api/dia/${encodeURIComponent(dia)}`, {
     method: "PUT",
-    body: JSON.stringify({ obediencia, desobediencia }),
+    body: JSON.stringify({ obediencia, desobediencia, desculpa }),
   });
 }
 
