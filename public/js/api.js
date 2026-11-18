@@ -59,3 +59,16 @@ export function salvarComentario(eventoId, comentario) {
     body: JSON.stringify({ comentario }),
   });
 }
+
+export function excluirEvento(eventoId) {
+  return requisitar(`/api/evento/${encodeURIComponent(eventoId)}`, {
+    method: "DELETE",
+  });
+}
+
+export function restaurarEvento(eventoId) {
+  return requisitar(`/api/evento/${encodeURIComponent(eventoId)}`, {
+    method: "PATCH",
+    body: JSON.stringify({ restaurar: true }),
+  });
+}

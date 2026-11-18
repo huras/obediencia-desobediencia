@@ -52,8 +52,7 @@ function normalizarComentario(valor) {
     erro.status = 400;
     throw erro;
   }
-  const texto = valor.trim().slice(0, COMENTARIO_MAX);
-  return texto;
+  return valor.trim().slice(0, COMENTARIO_MAX);
 }
 
 function garantirDia(estado, dia) {
@@ -78,9 +77,12 @@ function snapshotDia(registro) {
   };
 }
 
-function eventosDoDia(estado, dia) {
+function eventosDoDia(estado, dia, { incluirExcluidos = false } = {}) {
   return estado.eventos
-    .filter((ev) => ev.dia === dia)
+    .filter(
+      (ev) =>
+        ev.dia === dia && (incluirExcluidos || !ev.excluidoEm)
+    )
     .sort((a, b) => String(b.criadoEm).localeCompare(String(a.criadoEm)));
 }
 
@@ -93,6 +95,40 @@ function resolverDiaAlvo(diaInformado) {
     throw erro;
   }
   return dia;
+}
+
+function encontrarEvento(estado, eventoId) {
+  const id = Number(eventoId);
+  if (!Number.isInteger(id) || id < 1) {
+    const erro = new Error("Evento inválido");
+    erro.status = 400;
+    throw erro;
+  }
+  const evento = estado.eventos.find((ev) => ev.id === id);
+  if (!evento) {
+    const erro = new Error("Evento não encontrado");
+    erro.status = 404;
+    throw erro;
+  }
+  return evento;
+}
+
+function aplicarDeltaNoDia(registro, tipo, delta) {
+  if (tipo === "obediencia") {
+    registro.obediencia = Math.max(0, registro.obediencia + delta);
+  } else if (tipo === "desobediencia") {
+    registro.desobediencia = Math.max(0, registro.desobediencia + delta);
+  }
+  registro.atualizadoEm = agoraIso();
+}
+
+function respostaDia(estado, dia, evento = null) {
+  const registro = garantirDia(estado, dia).registro;
+  return {
+    ...snapshotDia(registro),
+    eventos: eventosDoDia(estado, dia),
+    evento: evento ? { ...evento } : null,
+  };
 }
 
 export function obterHoje() {
@@ -126,13 +162,12 @@ export function registrarEvento(tipo, delta, opcoes = {}) {
   const dia = resolverDiaAlvo(opcoes.dia);
   const estado = carregar();
   const { registro: atual } = garantirDia(estado, dia);
-  const agora = agoraIso();
 
   const proximo = {
     dia,
     obediencia: atual.obediencia,
     desobediencia: atual.desobediencia,
-    atualizadoEm: agora,
+    atualizadoEm: agoraIso(),
   };
 
   if (tipo === "obediencia") {
@@ -145,11 +180,7 @@ export function registrarEvento(tipo, delta, opcoes = {}) {
     proximo.obediencia === atual.obediencia &&
     proximo.desobediencia === atual.desobediencia
   ) {
-    return {
-      ...snapshotDia(atual),
-      eventos: eventosDoDia(estado, dia),
-      evento: null,
-    };
+    return respostaDia(estado, dia, null);
   }
 
   const evento = {
@@ -158,7 +189,8 @@ export function registrarEvento(tipo, delta, opcoes = {}) {
     tipo,
     delta,
     comentario,
-    criadoEm: agora,
+    criadoEm: agoraIso(),
+    excluidoEm: null,
   };
 
   estado.dias[dia] = proximo;
@@ -168,14 +200,9 @@ export function registrarEvento(tipo, delta, opcoes = {}) {
   }
   salvar(estado);
 
-  return {
-    ...snapshotDia(proximo),
-    eventos: eventosDoDia(estado, dia),
-    evento,
-  };
+  return respostaDia(estado, dia, evento);
 }
 
-/** Define totais absolutos de um dia (útil para corrigir dias passados). */
 export function definirContagens(diaInformado, obediencia, desobediencia) {
   const dia = resolverDiaAlvo(diaInformado);
   const o = Number(obediencia);
@@ -196,11 +223,7 @@ export function definirContagens(diaInformado, obediencia, desobediencia) {
   const agora = agoraIso();
 
   if (atual.obediencia === o && atual.desobediencia === d) {
-    return {
-      ...snapshotDia(atual),
-      eventos: eventosDoDia(estado, dia),
-      evento: null,
-    };
+    return respostaDia(estado, dia, null);
   }
 
   const evento = {
@@ -210,6 +233,7 @@ export function definirContagens(diaInformado, obediencia, desobediencia) {
     delta: 0,
     comentario: `Ajuste manual: O ${atual.obediencia}→${o} · D ${atual.desobediencia}→${d}`,
     criadoEm: agora,
+    excluidoEm: null,
     antes: {
       obediencia: atual.obediencia,
       desobediencia: atual.desobediencia,
@@ -217,40 +241,27 @@ export function definirContagens(diaInformado, obediencia, desobediencia) {
     depois: { obediencia: o, desobediencia: d },
   };
 
-  const proximo = {
+  estado.dias[dia] = {
     dia,
     obediencia: o,
     desobediencia: d,
     atualizadoEm: agora,
   };
-
-  estado.dias[dia] = proximo;
   estado.eventos.push(evento);
   if (estado.eventos.length > EVENTOS_MAX) {
     estado.eventos = estado.eventos.slice(-(EVENTOS_MAX - 1000));
   }
   salvar(estado);
 
-  return {
-    ...snapshotDia(proximo),
-    eventos: eventosDoDia(estado, dia),
-    evento,
-  };
+  return respostaDia(estado, dia, evento);
 }
 
 export function atualizarComentario(eventoId, comentarioBruto) {
-  const id = Number(eventoId);
-  if (!Number.isInteger(id) || id < 1) {
-    const erro = new Error("Evento inválido");
-    erro.status = 400;
-    throw erro;
-  }
-  const comentario = normalizarComentario(comentarioBruto);
   const estado = carregar();
-  const evento = estado.eventos.find((ev) => ev.id === id);
-  if (!evento) {
-    const erro = new Error("Evento não encontrado");
-    erro.status = 404;
+  const evento = encontrarEvento(estado, eventoId);
+  if (evento.excluidoEm) {
+    const erro = new Error("Evento excluído não pode ser editado");
+    erro.status = 400;
     throw erro;
   }
   if (evento.tipo === "ajuste") {
@@ -259,16 +270,54 @@ export function atualizarComentario(eventoId, comentarioBruto) {
     throw erro;
   }
 
-  evento.comentario = comentario;
+  evento.comentario = normalizarComentario(comentarioBruto);
   evento.editadoEm = agoraIso();
   salvar(estado);
+  return respostaDia(estado, evento.dia, evento);
+}
 
-  const registro = garantirDia(estado, evento.dia).registro;
-  return {
-    ...snapshotDia(registro),
-    eventos: eventosDoDia(estado, evento.dia),
-    evento: { ...evento },
-  };
+/** Soft delete: marca excluidoEm e desfaz o efeito no contador do dia. */
+export function excluirEvento(eventoId) {
+  const estado = carregar();
+  const evento = encontrarEvento(estado, eventoId);
+
+  if (evento.excluidoEm) {
+    return respostaDia(estado, evento.dia, evento);
+  }
+  if (evento.tipo === "ajuste") {
+    const erro = new Error("Ajuste manual não pode ser excluído assim");
+    erro.status = 400;
+    throw erro;
+  }
+
+  const { registro } = garantirDia(estado, evento.dia);
+  // desfaz o delta original (+1 → −1, −1 → +1)
+  aplicarDeltaNoDia(registro, evento.tipo, -evento.delta);
+  evento.excluidoEm = agoraIso();
+  salvar(estado);
+  return respostaDia(estado, evento.dia, evento);
+}
+
+/** Restaura um soft delete e reaplica o delta no contador. */
+export function restaurarEvento(eventoId) {
+  const estado = carregar();
+  const evento = encontrarEvento(estado, eventoId);
+
+  if (!evento.excluidoEm) {
+    return respostaDia(estado, evento.dia, evento);
+  }
+  if (evento.tipo === "ajuste") {
+    const erro = new Error("Ajuste não pode ser restaurado assim");
+    erro.status = 400;
+    throw erro;
+  }
+
+  const { registro } = garantirDia(estado, evento.dia);
+  aplicarDeltaNoDia(registro, evento.tipo, evento.delta);
+  evento.excluidoEm = null;
+  evento.restauradoEm = agoraIso();
+  salvar(estado);
+  return respostaDia(estado, evento.dia, evento);
 }
 
 export function obterHistorico(quantidadeDias = 30) {

@@ -440,18 +440,32 @@ body {
   color: var(--cor-texto-suave);
 }
 
-.log__editar {
+.log__acoes {
+  display: grid;
+  gap: 0.15rem;
+  justify-items: end;
+}
+
+.log__editar,
+.log__excluir {
   -webkit-appearance: none;
   appearance: none;
   border: 0;
   background: transparent;
-  color: var(--cor-texto-suave);
   font: inherit;
   font-size: 0.8rem;
   font-weight: 700;
   cursor: pointer;
-  min-height: 2.25rem;
+  min-height: 2rem;
   padding: 0 0.2rem;
+}
+
+.log__editar {
+  color: var(--cor-texto-suave);
+}
+
+.log__excluir {
+  color: var(--cor-desobediencia-clara);
 }
 
 .log__vazio {

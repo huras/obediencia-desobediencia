@@ -4,13 +4,14 @@ import {
   enviarEvento,
   definirDia,
   salvarComentario,
-} from "./api.js?v=20261118";
+  excluirEvento,
+} from "./api.js?v=20261118b";
 import {
   inicializarGrafico,
   atualizarGrafico,
   calcularResumo,
-} from "./charts.js?v=20261118";
-import { criarFolha } from "./folha.js?v=20261118";
+} from "./charts.js?v=20261118b";
+import { criarFolha } from "./folha.js?v=20261118b";
 
 const INTERVALO_POLL_MS = 2500;
 const COMENTARIO_MAX = 280;
@@ -172,8 +173,8 @@ function pintarLog(eventos) {
       : "";
     const comentario = evento.comentario
       ? escaparHtml(evento.comentario)
-      : "Sem nota";
-    const podeEditar = evento.tipo !== "ajuste";
+      : "Sem observação";
+    const podeGerir = evento.tipo !== "ajuste";
 
     li.innerHTML = `
       <span class="log__badge">${badgeDelta(evento)}</span>
@@ -182,8 +183,11 @@ function pintarLog(eventos) {
         <p class="log__comentario ${evento.comentario ? "" : "is-vazio"}">${comentario}</p>
       </div>
       ${
-        podeEditar
-          ? `<button type="button" class="log__editar" data-editar-id="${evento.id}">Nota</button>`
+        podeGerir
+          ? `<div class="log__acoes">
+              <button type="button" class="log__editar" data-editar-id="${evento.id}">Nota</button>
+              <button type="button" class="log__excluir" data-excluir-id="${evento.id}" aria-label="Excluir ponto">Excluir</button>
+            </div>`
           : `<span></span>`
       }
     `;
@@ -251,24 +255,112 @@ function fecharFolhaAtual() {
   }
 }
 
+function enfileirarEvento({ tipo, delta, comentario = "" }) {
+  const otimista = {
+    ...estado,
+    obediencia:
+      tipo === "obediencia"
+        ? Math.max(0, estado.obediencia + delta)
+        : estado.obediencia,
+    desobediencia:
+      tipo === "desobediencia"
+        ? Math.max(0, estado.desobediencia + delta)
+        : estado.desobediencia,
+  };
+  pintarContadores(otimista, { animar: true });
+
+  if (navigator.vibrate) {
+    try {
+      navigator.vibrate(12);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  filaEnvio = filaEnvio
+    .then(async () => {
+      const confirmado = await enviarEvento({
+        tipo,
+        delta,
+        comentario,
+        dia: diaAtivo,
+      });
+      aplicarEstadoDia(confirmado, { animar: false });
+      await sincronizarHistorico();
+      definirStatus(
+        ehHoje(confirmado.dia)
+          ? "Ao vivo · compartilhado"
+          : "Dia passado atualizado",
+        "is-ok"
+      );
+    })
+    .catch(async (erro) => {
+      console.warn("Falha ao enviar evento", erro);
+      definirStatus("Não deu para salvar. Tentando sincronizar…", "is-erro");
+      await sincronizarDia();
+    });
+}
+
+/** Folha na hora do +: observação já nasce ligada ao ponto. */
+function abrirFolhaMarcarPonto(tipo, delta) {
+  fecharFolhaAtual();
+  const ehMais = delta === 1;
+  const titulo =
+    tipo === "obediencia"
+      ? ehMais
+        ? "Marcar obediência"
+        : "Diminuir obediência"
+      : ehMais
+        ? "Marcar desobediência"
+        : "Diminuir desobediência";
+
+  const folha = criarFolha({
+    titulo,
+    corpoHtml: `
+      <p class="log__meta">${ehMais ? "+1" : "−1"} neste ponto · a observação fica ligada a ele</p>
+      <div class="folha__campo">
+        <label for="campo-comentario">Observação (opcional, até ${COMENTARIO_MAX})</label>
+        <textarea id="campo-comentario" maxlength="${COMENTARIO_MAX}" placeholder="Ex.: guardou o brinquedo sem reclamar"></textarea>
+      </div>
+    `,
+    acoes: [
+      {
+        rotulo: "Cancelar",
+        classe: "folha__btn--ghost",
+        onClick: () => folha.fechar(),
+      },
+      {
+        rotulo: ehMais ? "Marcar" : "Confirmar",
+        classe: "folha__btn--primario",
+        onClick: () => {
+          const texto = folha.query("#campo-comentario").value.trim();
+          folha.fechar();
+          enfileirarEvento({ tipo, delta, comentario: texto });
+        },
+      },
+    ],
+  });
+  folhaAberta = folha;
+}
+
 function abrirFolhaNota({ eventoId, comentarioInicial = "", titulo }) {
   fecharFolhaAtual();
   const folha = criarFolha({
-    titulo: titulo || "Nota do ponto",
+    titulo: titulo || "Observação do ponto",
     corpoHtml: `
       <div class="folha__campo">
-        <label for="campo-comentario">Comentário (opcional, até ${COMENTARIO_MAX})</label>
+        <label for="campo-comentario">Observação (opcional, até ${COMENTARIO_MAX})</label>
         <textarea id="campo-comentario" maxlength="${COMENTARIO_MAX}" placeholder="Ex.: guardou o brinquedo sem reclamar">${escaparHtml(comentarioInicial)}</textarea>
       </div>
     `,
     acoes: [
       {
-        rotulo: "Pular",
+        rotulo: "Cancelar",
         classe: "folha__btn--ghost",
         onClick: () => folha.fechar(),
       },
       {
-        rotulo: "Salvar nota",
+        rotulo: "Salvar",
         classe: "folha__btn--primario",
         onClick: async () => {
           const texto = folha.query("#campo-comentario").value.trim();
@@ -276,10 +368,48 @@ function abrirFolhaNota({ eventoId, comentarioInicial = "", titulo }) {
             const dados = await salvarComentario(eventoId, texto);
             aplicarEstadoDia(dados);
             await sincronizarHistorico();
-            definirStatus("Nota salva", "is-ok");
+            definirStatus("Observação salva", "is-ok");
             folha.fechar();
           } catch (erro) {
-            definirStatus(erro.message || "Falha ao salvar nota", "is-erro");
+            definirStatus(erro.message || "Falha ao salvar", "is-erro");
+          }
+        },
+      },
+    ],
+  });
+  folhaAberta = folha;
+}
+
+function abrirFolhaExcluir(evento) {
+  fecharFolhaAtual();
+  const folha = criarFolha({
+    titulo: "Excluir ponto?",
+    corpoHtml: `
+      <p class="log__meta">Soft delete: some do log e desfaz o contador. O registro fica guardado.</p>
+      <p class="log__comentario">${
+        evento.comentario
+          ? escaparHtml(evento.comentario)
+          : "Sem observação"
+      }</p>
+    `,
+    acoes: [
+      {
+        rotulo: "Cancelar",
+        classe: "folha__btn--ghost",
+        onClick: () => folha.fechar(),
+      },
+      {
+        rotulo: "Excluir",
+        classe: "folha__btn--primario",
+        onClick: async () => {
+          try {
+            const dados = await excluirEvento(evento.id);
+            aplicarEstadoDia(dados, { animar: true });
+            await sincronizarHistorico();
+            definirStatus("Ponto excluído", "is-ok");
+            folha.fechar();
+          } catch (erro) {
+            definirStatus(erro.message || "Falha ao excluir", "is-erro");
           }
         },
       },
@@ -370,62 +500,6 @@ function abrirFolhaAjusteManual() {
   folhaAberta = folha;
 }
 
-function enfileirarEvento(tipo, delta, botao) {
-  botao.classList.add("is-pulse");
-  window.setTimeout(() => botao.classList.remove("is-pulse"), 280);
-
-  const otimista = {
-    ...estado,
-    obediencia:
-      tipo === "obediencia"
-        ? Math.max(0, estado.obediencia + delta)
-        : estado.obediencia,
-    desobediencia:
-      tipo === "desobediencia"
-        ? Math.max(0, estado.desobediencia + delta)
-        : estado.desobediencia,
-  };
-  pintarContadores(otimista, { animar: true });
-
-  if (navigator.vibrate) {
-    try {
-      navigator.vibrate(12);
-    } catch {
-      /* ignore */
-    }
-  }
-
-  filaEnvio = filaEnvio
-    .then(async () => {
-      const confirmado = await enviarEvento({
-        tipo,
-        delta,
-        dia: diaAtivo,
-      });
-      aplicarEstadoDia(confirmado, { animar: false });
-      await sincronizarHistorico();
-      definirStatus(
-        ehHoje(confirmado.dia) ? "Ao vivo · compartilhado" : "Dia passado atualizado",
-        "is-ok"
-      );
-
-      if (confirmado.evento && delta === 1) {
-        abrirFolhaNota({
-          eventoId: confirmado.evento.id,
-          titulo:
-            tipo === "obediencia"
-              ? "Nota da obediência"
-              : "Nota da desobediência",
-        });
-      }
-    })
-    .catch(async (erro) => {
-      console.warn("Falha ao enviar evento", erro);
-      definirStatus("Não deu para salvar. Tentando sincronizar…", "is-erro");
-      await sincronizarDia();
-    });
-}
-
 function iniciarPolling() {
   pararPolling();
   pollId = window.setInterval(() => {
@@ -445,9 +519,12 @@ function pararPolling() {
 function ligarInteracoes() {
   document.querySelectorAll(".btn[data-tipo]").forEach((botao) => {
     botao.addEventListener("click", () => {
+      botao.classList.add("is-pulse");
+      window.setTimeout(() => botao.classList.remove("is-pulse"), 280);
       const tipo = botao.getAttribute("data-tipo");
       const delta = Number(botao.getAttribute("data-delta"));
-      enfileirarEvento(tipo, delta, botao);
+      // + e − passam pela folha: observação nasce ligada ao ponto
+      abrirFolhaMarcarPonto(tipo, delta);
     });
   });
 
@@ -480,16 +557,26 @@ function ligarInteracoes() {
   btnAjusteManual.addEventListener("click", abrirFolhaAjusteManual);
 
   elListaLog.addEventListener("click", (ev) => {
-    const botao = ev.target.closest("[data-editar-id]");
-    if (!botao) return;
-    const id = Number(botao.getAttribute("data-editar-id"));
-    const evento = (estado.eventos || []).find((item) => item.id === id);
-    if (!evento) return;
-    abrirFolhaNota({
-      eventoId: id,
-      comentarioInicial: evento.comentario || "",
-      titulo: "Editar nota",
-    });
+    const editar = ev.target.closest("[data-editar-id]");
+    if (editar) {
+      const id = Number(editar.getAttribute("data-editar-id"));
+      const evento = (estado.eventos || []).find((item) => item.id === id);
+      if (!evento) return;
+      abrirFolhaNota({
+        eventoId: id,
+        comentarioInicial: evento.comentario || "",
+        titulo: "Editar observação",
+      });
+      return;
+    }
+
+    const excluir = ev.target.closest("[data-excluir-id]");
+    if (excluir) {
+      const id = Number(excluir.getAttribute("data-excluir-id"));
+      const evento = (estado.eventos || []).find((item) => item.id === id);
+      if (!evento) return;
+      abrirFolhaExcluir(evento);
+    }
   });
 }
 

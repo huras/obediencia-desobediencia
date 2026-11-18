@@ -34,8 +34,10 @@ Variáveis opcionais:
 - `GET /api/hoje` → contadores + eventos do dia corrente
 - `GET /api/dia/YYYY-MM-DD` → contadores + log de um dia (não futuro)
 - `PUT /api/dia/YYYY-MM-DD` `{ "obediencia": N, "desobediencia": N }` → ajuste manual
-- `POST /api/evento` `{ "tipo", "delta": 1|-1, "comentario?", "dia?" }`
-- `PATCH /api/evento/:id` `{ "comentario" }` → nota opcional / edição
+- `POST /api/evento` `{ "tipo", "delta": 1|-1, "comentario?", "dia?" }` — observação nasce ligada ao ponto
+- `PATCH /api/evento/:id` `{ "comentario" }` → editar observação
+- `DELETE /api/evento/:id` → soft delete (`excluidoEm`) e desfaz o contador
+- `PATCH /api/evento/:id` `{ "restaurar": true }` → restaura soft delete
 - `GET /api/historico?dias=30` → série diária para o gráfico
 - `GET /api/saude` → healthcheck
 

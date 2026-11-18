@@ -9,6 +9,8 @@ import {
   obterHistorico,
   definirContagens,
   atualizarComentario,
+  excluirEvento,
+  restaurarEvento,
 } from "./db.mjs";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
@@ -162,11 +164,18 @@ async function tratarApi(req, res, pathname) {
   const matchEvento = pathname.match(/^\/api\/evento\/(\d+)$/);
   if (matchEvento && req.method === "PATCH") {
     const corpo = await lerCorpo(req);
+    if (corpo.restaurar === true) {
+      return enviarJson(res, 200, restaurarEvento(matchEvento[1]));
+    }
     return enviarJson(
       res,
       200,
       atualizarComentario(matchEvento[1], corpo.comentario)
     );
+  }
+
+  if (matchEvento && req.method === "DELETE") {
+    return enviarJson(res, 200, excluirEvento(matchEvento[1]));
   }
 
   if (pathname === "/api/saude" && req.method === "GET") {
