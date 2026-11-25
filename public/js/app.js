@@ -5,9 +5,9 @@ import {
   definirDia,
   salvarComentario,
   excluirEvento,
-} from "./api.js?v=20261125";
-import { renderizarPizzas, calcularResumo } from "./charts.js?v=20261125";
-import { criarFolha } from "./folha.js?v=20261125";
+} from "./api.js?v=20261125b";
+import { renderizarPizzas, calcularResumo } from "./charts.js?v=20261125b";
+import { criarFolha } from "./folha.js?v=20261125b";
 
 const INTERVALO_POLL_MS = 2500;
 const COMENTARIO_MAX = 280;

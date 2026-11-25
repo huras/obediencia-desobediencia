@@ -1,7 +1,8 @@
+/* Cores animadas via CSS (--pulse-*) para o fogo / pulso */
 const CORES = {
-  verde: "#3dba8a",
-  vermelho: "#e07a4a",
-  amarelo: "#e8c44a",
+  verde: "var(--pulse-verde)",
+  vermelho: "var(--pulse-vermelho)",
+  amarelo: "var(--pulse-amarelo)",
   vazio: "rgba(255,255,255,0.12)",
 };
 
