@@ -1,108 +1,125 @@
-let grafico = null;
+const CORES = {
+  verde: "#3dba8a",
+  vermelho: "#e07a4a",
+  amarelo: "#e8c44a",
+  vazio: "rgba(255,255,255,0.12)",
+};
 
-function rotuloCurto(diaIso) {
-  const [, mes, dia] = diaIso.split("-");
-  return `${Number(dia)}/${Number(mes)}`;
+const formatadorCurto = new Intl.DateTimeFormat("pt-BR", {
+  timeZone: "America/Sao_Paulo",
+  weekday: "short",
+  day: "numeric",
+  month: "numeric",
+});
+
+function rotuloDia(diaIso) {
+  const [ano, mes, dia] = diaIso.split("-").map(Number);
+  const data = new Date(Date.UTC(ano, mes - 1, dia, 15, 0, 0));
+  return formatadorCurto.format(data).replace(".", "");
 }
 
-function aguardarChartJs() {
-  if (window.Chart) return Promise.resolve(window.Chart);
-  return new Promise((resolve, reject) => {
-    let tentativas = 0;
-    const id = setInterval(() => {
-      tentativas += 1;
-      if (window.Chart) {
-        clearInterval(id);
-        resolve(window.Chart);
-      } else if (tentativas > 80) {
-        clearInterval(id);
-        reject(new Error("Chart.js não carregou"));
-      }
-    }, 50);
-  });
+function montarConic(item) {
+  const verde = item.obediencia || 0;
+  const vermelho = item.desobediencia || 0;
+  const amarelo = item.desculpa || 0;
+  const total = verde + vermelho + amarelo;
+  if (total === 0) {
+    return `conic-gradient(${CORES.vazio} 0deg 360deg)`;
+  }
+
+  const fatias = [];
+  let angulo = 0;
+  const partes = [
+    { valor: verde, cor: CORES.verde },
+    { valor: vermelho, cor: CORES.vermelho },
+    { valor: amarelo, cor: CORES.amarelo },
+  ];
+
+  for (const parte of partes) {
+    if (parte.valor <= 0) continue;
+    const proximo = angulo + (parte.valor / total) * 360;
+    fatias.push(`${parte.cor} ${angulo}deg ${proximo}deg`);
+    angulo = proximo;
+  }
+  return `conic-gradient(${fatias.join(", ")})`;
 }
 
-export async function inicializarGrafico(canvas) {
-  const Chart = await aguardarChartJs();
-  const reduzido = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-  grafico = new Chart(canvas, {
-    type: "bar",
-    data: {
-      labels: [],
-      datasets: [
-        {
-          label: "Verde",
-          data: [],
-          backgroundColor: "rgba(61, 186, 138, 0.85)",
-          borderRadius: 6,
-          maxBarThickness: 16,
-        },
-        {
-          label: "Vermelho",
-          data: [],
-          backgroundColor: "rgba(224, 122, 74, 0.85)",
-          borderRadius: 6,
-          maxBarThickness: 16,
-        },
-        {
-          label: "Amarelo",
-          data: [],
-          backgroundColor: "rgba(232, 196, 74, 0.9)",
-          borderRadius: 6,
-          maxBarThickness: 16,
-        },
-      ],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      animation: reduzido ? false : { duration: 450 },
-      plugins: {
-        legend: {
-          labels: {
-            color: "#a8c4c0",
-            boxWidth: 12,
-            font: { family: '"Source Sans 3", sans-serif', weight: "600" },
-          },
-        },
-        tooltip: {
-          callbacks: {
-            title(itens) {
-              return itens[0]?.label || "";
-            },
-          },
-        },
-      },
-      scales: {
-        x: {
-          stacked: false,
-          ticks: { color: "#a8c4c0", maxRotation: 0, autoSkipPadding: 8 },
-          grid: { display: false },
-        },
-        y: {
-          beginAtZero: true,
-          ticks: {
-            color: "#a8c4c0",
-            precision: 0,
-          },
-          grid: { color: "rgba(255,255,255,0.08)" },
-        },
-      },
-    },
-  });
-
-  return grafico;
+function escapar(texto) {
+  return String(texto)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
 }
 
-export function atualizarGrafico(serie) {
-  if (!grafico) return;
+/**
+ * Renderiza sequência horizontal de cards-pizza (um por dia).
+ * onEscolherDia(diaIso) — toque no card abre aquele dia.
+ */
+export function renderizarPizzas(container, serie, { diaAtivo, onEscolherDia } = {}) {
+  if (!container) return;
 
-  grafico.data.labels = serie.map((item) => rotuloCurto(item.dia));
-  grafico.data.datasets[0].data = serie.map((item) => item.obediencia || 0);
-  grafico.data.datasets[1].data = serie.map((item) => item.desobediencia || 0);
-  grafico.data.datasets[2].data = serie.map((item) => item.desculpa || 0);
-  grafico.update();
+  // Série invertida: hoje / mais recente primeiro (melhor no mobile)
+  const dias = [...(serie || [])].reverse();
+  container.innerHTML = "";
+
+  if (dias.length === 0) {
+    container.innerHTML =
+      '<p class="pizzas__vazio">Sem histórico neste período.</p>';
+    return;
+  }
+
+  const faixa = document.createElement("div");
+  faixa.className = "pizzas__faixa";
+  faixa.setAttribute("role", "list");
+
+  for (const item of dias) {
+    const verde = item.obediencia || 0;
+    const vermelho = item.desobediencia || 0;
+    const amarelo = item.desculpa || 0;
+    const total = verde + vermelho + amarelo;
+    const ativo = item.dia === diaAtivo;
+
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = `pizza-card${ativo ? " is-ativo" : ""}`;
+    card.setAttribute("role", "listitem");
+    card.setAttribute("data-dia", item.dia);
+    card.setAttribute(
+      "aria-label",
+      `${rotuloDia(item.dia)}: ${verde} verde, ${vermelho} vermelho, ${amarelo} amarelo`
+    );
+    if (ativo) card.setAttribute("aria-current", "true");
+
+    card.innerHTML = `
+      <span class="pizza-card__dia">${escapar(rotuloDia(item.dia))}</span>
+      <span class="pizza-card__pizza" style="background: ${montarConic(item)}" aria-hidden="true">
+        <span class="pizza-card__miolo">${total === 0 ? "·" : total}</span>
+      </span>
+      <span class="pizza-card__legenda">
+        <span class="pizza-card__chip pizza-card__chip--verde">${verde}</span>
+        <span class="pizza-card__chip pizza-card__chip--vermelho">${vermelho}</span>
+        <span class="pizza-card__chip pizza-card__chip--amarelo">${amarelo}</span>
+      </span>
+    `;
+
+    card.addEventListener("click", () => onEscolherDia?.(item.dia));
+    faixa.appendChild(card);
+  }
+
+  container.appendChild(faixa);
+
+  // Centraliza o dia ativo no scroll
+  const ativoEl = faixa.querySelector(".pizza-card.is-ativo");
+  if (ativoEl) {
+    requestAnimationFrame(() => {
+      ativoEl.scrollIntoView({
+        inline: "center",
+        block: "nearest",
+        behavior: "smooth",
+      });
+    });
+  }
 }
 
 export function calcularResumo(serie) {
@@ -114,7 +131,6 @@ export function calcularResumo(serie) {
     desobediencia += item.desobediencia || 0;
     desculpa += item.desculpa || 0;
   }
-  // Razão positiva: verde em relação a verde+vermelho líquido
   const total = obediencia + desobediencia;
   const razao = total === 0 ? null : Math.round((obediencia / total) * 100);
   return { obediencia, desobediencia, desculpa, razao };

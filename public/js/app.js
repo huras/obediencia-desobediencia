@@ -5,13 +5,9 @@ import {
   definirDia,
   salvarComentario,
   excluirEvento,
-} from "./api.js?v=20261118c";
-import {
-  inicializarGrafico,
-  atualizarGrafico,
-  calcularResumo,
-} from "./charts.js?v=20261118c";
-import { criarFolha } from "./folha.js?v=20261118c";
+} from "./api.js?v=20261125";
+import { renderizarPizzas, calcularResumo } from "./charts.js?v=20261125";
+import { criarFolha } from "./folha.js?v=20261125";
 
 const INTERVALO_POLL_MS = 2500;
 const COMENTARIO_MAX = 280;
@@ -33,7 +29,7 @@ const btnDiaProximo = document.getElementById("btn-dia-proximo");
 const btnEscolherDia = document.getElementById("btn-escolher-dia");
 const btnAjusteManual = document.getElementById("btn-ajuste-manual");
 const btnDesculpa = document.getElementById("btn-desculpa");
-const canvas = document.getElementById("grafico-progresso");
+const elGradePizzas = document.getElementById("grade-pizzas");
 
 const formatadorData = new Intl.DateTimeFormat("pt-BR", {
   timeZone: "America/Sao_Paulo",
@@ -61,6 +57,7 @@ let estado = {
 let diaAtivo = null;
 let diaHojeCache = null;
 let periodoDias = 7;
+let serieHistorico = [];
 let abortPoll = null;
 let abortHistorico = null;
 let filaEnvio = Promise.resolve();
@@ -225,6 +222,19 @@ function aplicarEstadoDia(dados, { animar = false } = {}) {
   pintarLog(dados.eventos || []);
   elData.textContent = formatarRotuloDia(dados.dia);
   atualizarNavegacaoDia();
+  if (serieHistorico.length) pintarHistoricoPizzas();
+}
+
+function pintarHistoricoPizzas() {
+  renderizarPizzas(elGradePizzas, serieHistorico, {
+    diaAtivo,
+    onEscolherDia: async (dia) => {
+      if (dia === diaAtivo) return;
+      diaAtivo = dia;
+      await sincronizarDia();
+      pintarHistoricoPizzas();
+    },
+  });
 }
 
 async function sincronizarHistorico() {
@@ -232,8 +242,9 @@ async function sincronizarHistorico() {
   abortHistorico = new AbortController();
   try {
     const dados = await buscarHistorico(periodoDias, abortHistorico.signal);
-    atualizarGrafico(dados.dias || []);
-    pintarResumo(dados.dias || []);
+    serieHistorico = dados.dias || [];
+    pintarResumo(serieHistorico);
+    pintarHistoricoPizzas();
   } catch (erro) {
     if (erro.name === "AbortError") return;
     console.warn("Falha ao carregar histórico", erro);
@@ -636,12 +647,6 @@ async function iniciar() {
   diaAtivo = hojeIsoLocal();
   diaHojeCache = diaAtivo;
   ligarInteracoes();
-  try {
-    await inicializarGrafico(canvas);
-  } catch (erro) {
-    console.warn(erro);
-    definirStatus("Gráfico indisponível", "is-erro");
-  }
   await sincronizarDia();
   await sincronizarHistorico();
   iniciarPolling();
